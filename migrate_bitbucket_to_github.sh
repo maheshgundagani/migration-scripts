@@ -1,9 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-BITBUCKET_USER="maheshemo1-admin"
-BITBUCKET_WORKSPACE="maheshemo1"
-GITHUB_USER="maheshgundagani"
+# These must be provided as env vars (Jenkins will set them)
+: "${BITBUCKET_USER:?BITBUCKET_USER not set}"
+: "${BITBUCKET_PASS:?BITBUCKET_PASS not set}"
+: "${BITBUCKET_WORKSPACE:?BITBUCKET_WORKSPACE not set}"
+: "${GITHUB_USER:?GITHUB_USER not set}"
+: "${GITHUB_PAT:?GITHUB_PAT not set}"
 
 while read -r REPO; do
   [ -z "$REPO" ] && continue
@@ -12,20 +15,21 @@ while read -r REPO; do
   echo "Migrating repo: $REPO"
   echo "==============================="
 
-  # If folder exists, skip clone
+  # Clone from Bitbucket (with credentials)
   if [ -d "$REPO" ]; then
     echo "Directory $REPO already exists, using existing clone"
     cd "$REPO"
+    git remote set-url origin "https://${BITBUCKET_USER}:${BITBUCKET_PASS}@bitbucket.org/${BITBUCKET_WORKSPACE}/${REPO}.git"
   else
-    git clone "https://${BITBUCKET_USER}@bitbucket.org/${BITBUCKET_WORKSPACE}/${REPO}.git"
+    git clone "https://${BITBUCKET_USER}:${BITBUCKET_PASS}@bitbucket.org/${BITBUCKET_WORKSPACE}/${REPO}.git"
     cd "$REPO"
   fi
 
-  # Add GitHub remote if not already present
+  # Configure GitHub remote with PAT
   if git remote | grep -q '^github$'; then
-    echo "GitHub remote already exists"
+    git remote set-url github "https://${GITHUB_USER}:${GITHUB_PAT}@github.com/${GITHUB_USER}/${REPO}.git"
   else
-    git remote add github "https://github.com/${GITHUB_USER}/${REPO}.git"
+    git remote add github "https://${GITHUB_USER}:${GITHUB_PAT}@github.com/${GITHUB_USER}/${REPO}.git"
   fi
 
   git remote -v
